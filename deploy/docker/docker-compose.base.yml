@@ -8,15 +8,19 @@ services:
     environment:
       - POSTGRES_DB=refly
       - POSTGRES_USER=refly
-      - POSTGRES_PASSWORD=test
+      - POSTGRES_PASSWORD=refly_pass
     healthcheck:
-      test: ['CMD-SHELL', 'pg_isready -U refly']
+      test: [ 'CMD-SHELL', 'pg_isready -U refly' ]
       interval: 10s
       timeout: 5s
-      retries: 3
+      retries: 5
       start_period: 10s
     networks:
       - refly_network
+    deplay:
+      resources:
+        limits:
+          memory: 256M
 
   minio:
     container_name: ${REFLY_CONTAINER_NAME_PREFIX:-refly}_minio
@@ -29,7 +33,7 @@ services:
       MINIO_ROOT_USER: minioadmin
       MINIO_ROOT_PASSWORD: minioadmin
     healthcheck:
-      test: ['CMD', 'curl', '-f', 'http://localhost:9000/minio/health/live']
+      test: [ 'CMD', 'curl', '-f', 'http://localhost:9000/minio/health/live' ]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -39,15 +43,22 @@ services:
 
   redis:
     container_name: ${REFLY_CONTAINER_NAME_PREFIX:-refly}_redis
-    image: redis/redis-stack:latest
+    #image: redis/redis-stack:latest
+    image: redis:7-alpine
     restart: always
     volumes:
       - redis_data:/data
+      - ./redis.conf:/usr/local/etc/redis/redis.conf
+    command: redis-server --maxmemory 128mb --maxmemory-policy allkeys-lru
+    deploy:
+      resources:
+        limits:
+          memory: 128M
     healthcheck:
-      test: ['CMD', 'redis-cli', 'ping']
+      test: [ 'CMD', 'redis-cli', 'ping' ]
       interval: 10s
       timeout: 5s
-      retries: 3
+      retries: 5
       start_period: 10s
     networks:
       - refly_network
@@ -59,7 +70,7 @@ services:
       - qdrant_data:/qdrant/storage
     restart: always
     healthcheck:
-      test: ['CMD-SHELL', "curl -s http://localhost:6333/healthz | grep -q 'healthz check passed' || exit 1"]
+      test: [ 'CMD-SHELL', "curl -s http://localhost:6333/healthz | grep -q 'healthz check passed' || exit 1" ]
       interval: 30s
       timeout: 10s
       retries: 3
